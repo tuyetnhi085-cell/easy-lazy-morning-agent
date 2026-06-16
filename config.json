@@ -1,0 +1,291 @@
+{
+  "_comment": "Easy Lazy Morning — Agent Configuration. Edit these values to match your actual targets.",
+  "agent": {
+    "name": "Easy Lazy Morning",
+    "version": "2.0.0",
+    "owner": "nhint6@vng.com.vn",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "schedule_cron": "15 10 * * 1-5",
+    "briefing_send_to": "nhint6@vng.com.vn",
+    "_schedule_note": "VPN auto-connects at 10:00 AM, agent runs at 10:15 AM with 15-min buffer"
+  },
+  "kpi_thresholds": {
+    "_logic": "Two independent checks run for every metric. Both must pass for Green. Failing either triggers Yellow or Red.",
+    "check_1_vs_splm": {
+      "label": "vs Same Period Last Month",
+      "description": "MTD actual this month vs MTD actual same calendar period last month",
+      "formula": "splm_gap_pct = (MTD_actual - SPLM_actual) / SPLM_actual * 100",
+      "green": "splm_gap_pct >= 0  (at or above SPLM)",
+      "yellow": "splm_gap_pct between -5 and 0  (slightly below SPLM, watch closely)",
+      "red": "splm_gap_pct < -5  (more than 5% below same period last month)"
+    },
+    "check_2_monthly_on_track": {
+      "label": "Monthly KPI On-Track",
+      "description": "Is the current MTD run-rate sufficient to hit the monthly KPI target by month-end?",
+      "formula": "projected_eom = MTD_actual / working_days_elapsed * total_working_days_in_month",
+      "on_track_pct": "projected_eom / monthly_kpi_target * 100",
+      "green": "on_track_pct >= 95",
+      "yellow": "on_track_pct between 85 and 95  (at risk, monitor daily)",
+      "red": "on_track_pct < 85  (will miss monthly KPI at current pace)"
+    },
+    "combined_status_logic": {
+      "green": "Both checks Green",
+      "yellow": "Either check is Yellow (and neither is Red)",
+      "red": "Either check is Red"
+    },
+    "annual_targets": {
+      "telco_mpu_eoy": 3000000,
+      "telco_mpu_june_2026": 2000000,
+      "_note": "Monthly targets are derived from the MKT plan Google Sheet. Fallback: divide EOY target proportionally."
+    },
+    "fpu_trend": {
+      "wow_drop_alert_pct": 10,
+      "_note": "Separate alert: flag if FPU this week is >10% below last week, regardless of monthly status"
+    },
+    "cost_per_user": {
+      "budget_alert_pct": 130,
+      "_note": "Separate budget alert: flag if actual cost/user exceeds plan by >30%"
+    },
+    "notification_cr": {
+      "baseline_pct": 0.48,
+      "target_pct": 0.55,
+      "_note": "Notification click-rate %. Improved from 0.35% (Apr) to 0.48% (May 2026). Below baseline = flag."
+    }
+  },
+  "dashboards": [
+    {
+      "name": "Telco MPU Performance",
+      "url": "https://atlas.vng.com.vn/#/site/ZLPDataServices/views/OverallMPUPerformance/OverallMPUbyUserType",
+      "metrics": [
+        "MTD_MPU",
+        "MTD_MPU_last_month",
+        "FPU",
+        "FPU_last_week",
+        "RPU",
+        "Churn"
+      ],
+      "priority": 1
+    },
+    {
+      "name": "Global SP KPI",
+      "url": "https://atlas.vng.com.vn/#/site/ZLPDataServices/views/SPKPIDashboard/SPKPIDashboard",
+      "metrics": [
+        "SP_payment_volume",
+        "Telco_contribution",
+        "MoM_trend"
+      ],
+      "priority": 2
+    },
+    {
+      "name": "TikTok Payment Monitoring",
+      "url": "https://atlas.vng.com.vn/#/site/ZLPDataServices/views/TikTokPaymentMonitoring/TikTokPaymentMonitoring",
+      "metrics": [
+        "TikTok_MPU",
+        "TikTok_MPU_last_month",
+        "TikTok_FPU",
+        "TPV"
+      ],
+      "priority": 2
+    },
+    {
+      "name": "Promotion Cost Summary",
+      "url": "https://atlas.vng.com.vn/#/site/ZLPDataServices/views/PromotionSummary/PromotionSummary",
+      "metrics": [
+        "promo_spend_MTD",
+        "cost_per_user",
+        "cost_per_user_plan",
+        "budget_remaining"
+      ],
+      "priority": 3
+    }
+  ],
+  "google_sheets": {
+    "telco_mkt_plan": "https://docs.google.com/spreadsheets/d/1DK7nI3CuTFHCWUtbAvvl5P8SDt6Y6uoF_bcrE3DEixc/",
+    "sheets_to_read": [
+      "Airtime",
+      "Data",
+      "Combo",
+      "Digital Cards",
+      "My Viettel",
+      "Pipeline"
+    ],
+    "_note": "Monthly KPI targets are read from here. Also read last month's actuals if available."
+  },
+  "microsoft_365": {
+    "email_lookback_hours": 24,
+    "action_keywords": [
+      "please",
+      "cần",
+      "urgent",
+      "by EOD",
+      "deadline",
+      "confirm",
+      "approval",
+      "review",
+      "FYI action",
+      "action required"
+    ],
+    "priority_senders": [],
+    "_note": "Add email addresses of your manager and key partners to priority_senders"
+  },
+  "lark_api": {
+    "base_url": "https://open.feishu.cn/open-apis",
+    "app_id_env": "LARK_APP_ID",
+    "app_secret_env": "LARK_APP_SECRET",
+    "token_endpoint": "/auth/v3/tenant_access_token/internal",
+    "messages_endpoint": "/im/v1/messages",
+    "lookback_hours": 24,
+    "chat_ids": [],
+    "_note": "Add your Lark group chat IDs to chat_ids. Store LARK_APP_ID and LARK_APP_SECRET via /agentbase-identity"
+  },
+  "agentbase": {
+    "gateway_path": "/agentbase-gateway",
+    "identity_path": "/agentbase-identity",
+    "client_id_env": "GREENNODE_CLIENT_ID",
+    "client_secret_env": "GREENNODE_CLIENT_SECRET",
+    "outlook_send_endpoint": "https://graph.microsoft.com/v1.0/me/sendMail"
+  },
+  "telco_campaigns": {
+    "active_schemes": ["Airtime", "Data", "Combo", "Digital Cards", "My Viettel", "eSIM"],
+    "partners": ["Viettel", "Vinaphone", "Mobifone"],
+    "_note": "Used for contextualizing KPI drop reasons in analysis"
+  },
+
+  "forecast": {
+    "method": "historical_pacing_curve",
+    "fallback_method": "linear",
+    "historical_months_lookback": 3,
+    "data_source": "google_sheets",
+    "_note": "Agent reads past 3 months daily actuals from Google Sheets to build pacing curve. Falls back to linear with accuracy warning if unavailable.",
+    "pacing_curve_columns": {
+      "telco_mpu": "Daily MPU",
+      "tiktok_mpu": "TikTok Daily MPU",
+      "fpu": "Daily FPU"
+    }
+  },
+
+  "bau_sop_sheet": "https://docs.google.com/spreadsheets/d/1Cukt2MAPnDSnYT-l5OtQkqVc5pYBQ0etx5z7TF4Wzko/edit",
+  "_bau_note": "Agent reads this sheet each morning to get the live SOP. The schedule below is the structured version for date-based flagging.",
+
+  "bau_tasks": {
+
+    "daily": [
+      {
+        "task": "Check dashboard performance",
+        "detail": "Track internal numbers at atlas.vng.com.vn — MPU, FPU, Cost/user, TikTok Shop",
+        "pillar": "Performance Monitoring"
+      },
+      {
+        "task": "Prepare noti for next day",
+        "detail": "Set noti before 18:00 today for D+1. Schedule: https://docs.google.com/spreadsheets/d/1EiCwwZ--U9dbwveHDf1Ro6JcFmyv6EKAPoup7uPr9Aw/edit",
+        "pillar": "Execution",
+        "deadline_time": "18:00"
+      }
+    ],
+
+    "weekly": {
+      "monday": [
+        {
+          "task": "Check TikTok Shop external performance",
+          "detail": "Hạnh auto-updates TTS perf every Monday. Check sheet & flag if numbers off track.",
+          "pillar": "Performance Monitoring"
+        },
+        {
+          "task": "Check Traveloka external performance",
+          "detail": "Email PIC (per plan email from start of month) to request MTD performance update.",
+          "pillar": "Performance Monitoring"
+        }
+      ]
+    },
+
+    "monthly_by_date": [
+      {
+        "day": 15,
+        "timing": "15th of each month — send NEXT month's external plan",
+        "tasks": [
+          "Send external plan to TikTok Shop: update Lark sheet + notify in group + send official email [External] Zalopay x PIPO TTS",
+          "Send external plan to Traveloka: create table and send email [Zalopay x Traveloka] Marketing Collaboration",
+          "Send external plan to FA for approval (sheet: FA Global Monthly Promotion Plan, sheets: Marketplace & Traveling)"
+        ],
+        "pillar": "Planning",
+        "sla_note": "FA approval takes 3-4 days — send external plan first, add internal plan closer to 20th"
+      },
+      {
+        "day": 20,
+        "timing": "20th of each month — lock internal plan + request data",
+        "tasks": [
+          "Lock internal plan in FA sheet, send final approval email",
+          "Update internal Global sheet with finalized plan",
+          "Request data analysis for monthly report: email [Global Marketing] Phân tích user tháng M/YYYY"
+        ],
+        "pillar": "Planning + Report",
+        "sla_note": "Data request SLA 4 days — send from 20th, schedule pickup at EOM"
+      },
+      {
+        "day": 25,
+        "timing": "25th–26th — register slots and request setups for next month",
+        "tasks": [
+          "Register noti slots for next month (file: Noti schedule sheet)",
+          "Register Home Headers slots for next month",
+          "Register Social Media booking for next month",
+          "Register UGC for next month",
+          "Request design banners via Trello (SLA 3 days) — brief in GSlides, notify Bình after request"
+        ],
+        "pillar": "Execution",
+        "sla_note": "Banner SLA 3 days — request from 25th at latest"
+      },
+      {
+        "day": 26,
+        "timing": "26th — request user segments",
+        "tasks": [
+          "Request user segments from ZDS: email [Global Marketing] Request lấy tập chạy CT tháng M+1",
+          "Update segment to CRM once ZDS exports"
+        ],
+        "pillar": "Execution",
+        "sla_note": "Segment SLA 3 days — can send mid-month emergency requests too"
+      },
+      {
+        "day": 27,
+        "timing": "27th — promotion setup requests",
+        "tasks": [
+          "Create new MKT codes for new campaigns (exclude renewals)",
+          "Send Ops setup requests via Jira + Confluence + notify Mai in Global group (SLA 3 days)",
+          "Request camp renewals via Jira: top-up budget + top-up rewards",
+          "Set up self-managed campaigns on CRM: budget approval, segments, vouchers",
+          "Set up ads request: prepare Onelink (Appsflyer), phone number list, materials"
+        ],
+        "pillar": "Execution",
+        "sla_note": "All setup SLAs = 3 days. Ops requests must be sent by 27th latest."
+      },
+      {
+        "day": 29,
+        "timing": "29th — monthly report",
+        "tasks": [
+          "Analyze full month M performance: MPU, FPU, TPV, cost/user vs target",
+          "Draft report with insights and plan for M+1",
+          "Schedule: send from 29th, finalize by EOM"
+        ],
+        "pillar": "Report"
+      }
+    ],
+
+    "custom_deadlines": [
+      {
+        "task": "Claw-a-thon agent submission",
+        "due_date": "2026-06-17",
+        "due_time": "12:00",
+        "priority": "🔴"
+      }
+    ]
+  },
+
+  "briefing_format": {
+    "pages": 3,
+    "page_1": "Telco Performance",
+    "page_2": "Global & TikTok",
+    "page_3": "Consolidated Tasks & Workplan",
+    "include_subcategory_table": true,
+    "include_monthly_baseline": true,
+    "include_suggested_schedule": true
+  }
+}
