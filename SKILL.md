@@ -1,7 +1,7 @@
 # Easy Lazy Morning — Daily Briefing Agent v2.0
 
 > Ann's personal morning agent for ZaloPay Telco & Global marketing.
-> Runs each morning to read Gmail for dashboard PDF + emails, analyze KPIs, read comms, and send a 3-page briefing.
+> Runs each morning: Ann uploads dashboard PDF → agent analyzes KPIs, reads comms, compiles 3-page briefing.
 
 ---
 
@@ -15,20 +15,18 @@ Run this skill when:
 
 ## Prerequisites (must be active)
 
-- **Gmail MCP** connected to tuyetnhi085@gmail.com (dashboard PDF + email + Google Calendar)
+- **Gmail MCP** connected to tuyetnhi085@gmail.com (email + Google Calendar)
 - **Microsoft 365 MCP** connected (Teams messages only)
-- Ann must send the daily dashboard PDF to tuyetnhi085@gmail.com each morning **before 10:15 AM**
 
 ---
 
-## Step 1 — Read Dashboard PDF from Gmail
+## Step 1 — Request Dashboard PDF from Ann
 
-Search Gmail (tuyetnhi085@gmail.com) for today's dashboard email sent by Ann:
-- Subject contains: "dashboard" OR "brief" OR "KPI" OR "báo cáo"
-- Has PDF attachment
-- Received today (after midnight)
+**Ask Ann to upload today's dashboard PDF:**
 
-**Open and read the PDF attachment.** Extract all numbers visible:
+> "Chào Ann! Để chạy morning brief, bạn upload file PDF dashboard hôm nay nhé (Telco MPU + Global SP KPI + TikTok + Promo Budget). Kéo thả file vào đây là được 📎"
+
+Wait for Ann to upload the PDF file. Once received, read and extract all numbers visible:
 
 | Dashboard | What to extract |
 |-----------|----------------|
@@ -37,8 +35,8 @@ Search Gmail (tuyetnhi085@gmail.com) for today's dashboard email sent by Ann:
 | **TikTok** | MPU MTD, FPU, NPU, TPV, D-1 daily PU, MoM% by segment (Shop/Live/Ads) |
 | **Global SP KPI** | SP Volume MTD, EOM forecast, target, Telco share % |
 
-**If no PDF found by 10:15 AM:**
-Note "⚠️ Dashboard PDF not received — brief will use last known data from config.json" and continue.
+**If Ann says skip / no PDF available:**
+Note "⚠️ Dashboard PDF not provided — brief will use last known data from config.json" and continue.
 
 ---
 
