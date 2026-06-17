@@ -1,7 +1,7 @@
 # Easy Lazy Morning — Daily Briefing Agent v2.0
 
 > Ann's personal morning agent for ZaloPay Telco & Global marketing.
-> Runs each morning to pull dashboard data, analyze KPIs, read comms, and send a 3-page briefing to Outlook.
+> Runs each morning to read Gmail for dashboard PDF + emails, analyze KPIs, read comms, and send a 3-page briefing.
 
 ---
 
@@ -15,106 +15,40 @@ Run this skill when:
 
 ## Prerequisites (must be active)
 
-- VPN connected to VNG corporate network (required for atlas.vng.com.vn dashboards)
-- Microsoft 365 MCP connected (Outlook email, Teams, Calendar)
-- Google Drive MCP connected (MKT plan Google Sheets)
-- Claude in Chrome: browser open and logged into atlas.vng.com.vn
+- **Gmail MCP** connected to tuyetnhi085@gmail.com (dashboard PDF + email + Google Calendar)
+- **Microsoft 365 MCP** connected (Teams messages only)
+- Ann must send the daily dashboard PDF to tuyetnhi085@gmail.com each morning **before 10:15 AM**
 
 ---
 
-## Step 1 — Read Plan Targets & Historical Data from Google Sheets
+## Step 1 — Read Dashboard PDF from Gmail
 
-Use Google Drive MCP to read from both planning sheets.
+Search Gmail (tuyetnhi085@gmail.com) for today's dashboard email sent by Ann:
+- Subject contains: "dashboard" OR "brief" OR "KPI" OR "báo cáo"
+- Has PDF attachment
+- Received today (after midnight)
 
-**Telco MKT Plan:** `https://docs.google.com/spreadsheets/d/1DK7nI3CuTFHCWUtbAvvl5P8SDt6Y6uoF_bcrE3DEixc/`
+**Open and read the PDF attachment.** Extract all numbers visible:
 
-**TikTok MKT Plan:** `https://docs.google.com/spreadsheets/d/1DK7nI3CuTFHCWUtbAvvl5P8SDt6Y6uoF_bcrE3DEixc/`
+| Dashboard | What to extract |
+|-----------|----------------|
+| **Telco MPU** | MTD total + sub-cats (Airtime, Data, Digital Code, OutApp, Postpaid): MPU, NPU, FPU, Retain. Daily MTD series if visible. |
+| **Promo Budget** | Spend MTD, TPV, %Cost/TPV, CPU — row: Digital Services / Telco |
+| **TikTok** | MPU MTD, FPU, NPU, TPV, D-1 daily PU, MoM% by segment (Shop/Live/Ads) |
+| **Global SP KPI** | SP Volume MTD, EOM forecast, target, Telco share % |
 
-Extract for EACH metric (Telco MPU, TikTok MPU, FPU, Cost/user):
-- Monthly plan target (current month)
-- **Historical daily actuals for the past 3 months** — used to build the forecast curve
-- Monthly baseline tasks scheduled for this month (recurring: reports, campaign launches, reviews)
-- Deadlines or milestones this week
-
-If the sheet is unavailable, use `config.json` targets as fallback. Note forecast accuracy will be reduced.
-
----
-
-## Step 2 — Scrape All Dashboards via Browser Automation
-
-Navigate to each dashboard, wait for full load, extract all visible numbers.
-
-### Dashboard Group A — TELCO
-
-**Telco MPU Performance**
-URL: `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/OverallMPUPerformance/OverallMPUbyUserType`
-
-Extract (filter: Team=Digital Services, Category=Telco):
-- MTD MPU total + by sub-category (Airtime, Data, Digital Code, Postpaid, OutApp)
-- NPU, FPU (exclude NPU), Retain per sub-category
-- Cut-off date shown on dashboard
-
-**Promotion Cost Summary** (Telco portion)
-URL: `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/PromotionSummary/PromotionSummary`
-
-Extract:
-- Total promo spend MTD (Telco)
-- Cost/user ratio vs plan
-- Budget consumed % and remaining
-- Any campaigns approaching budget cap
-
----
-
-### Dashboard Group B — GLOBAL & TIKTOK
-
-**Global SP KPI**
-URL: `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/SPKPIDashboard/SPKPIDashboard`
-
-Extract:
-- Overall SP payment volume MTD
-- Telco category contribution % of total SP
-- Top performing SP categories
-- MoM trend flag
-
-**TikTok Payment Monitoring**
-URL: `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/TikTokPaymentMonitoring/TikTokPaymentMonitoring`
-
-Extract:
-- TikTok MPU MTD (total)
-- TikTok FPU and NPU
-- TPV (total payment volume)
-- WoW and MoM trend
-- Any anomaly or drop flags on dashboard
-
----
-
-**If VPN not active or dashboards return login page:**
-Skip Step 2, note "⚠️ Dashboard unavailable — VPN not connected", continue from Step 3.
+**If no PDF found by 10:15 AM:**
+Note "⚠️ Dashboard PDF not received — brief will use last known data from config.json" and continue.
 
 ---
 
 ## Step 3 — KPI Analysis: Green / Yellow / Red
 
-Run two checks per metric. Final status = worst of the two.
+One check per metric: Historical Pacing Curve → EOM Projection.
 
 ---
 
-### Check A — vs Same Period Last Month (SPLM)
-
-Compare today's MTD actual vs same calendar day last month.
-
-```
-splm_gap_pct = (MTD_actual_this_month - MTD_actual_same_day_last_month)
-               / MTD_actual_same_day_last_month * 100
-```
-
-- 🟢 ≥ 0% (at or above last month)
-- 🟡 -5% to 0% (slightly behind, watch)
-- 🔴 < -5% (meaningfully below last month)
-
----
-
-### Check B — Historical Curve Forecast (EOM Projection)
+### Check — Historical Curve Forecast (EOM Projection)
 
 **⚠️ Do NOT use simple linear projection.** Performance within a month is non-linear:
 - Early month (day 1–7): ramp-up, lower daily numbers
@@ -148,15 +82,13 @@ If historical data unavailable → fall back to linear projection but flag: "⚠
 
 ---
 
-### Combined Status
+### Status Thresholds
 
-| Check A (SPLM) | Check B (Forecast) | Final |
-|---|---|---|
-| 🟢 | 🟢 | 🟢 Green |
-| 🟡 | 🟢 | 🟡 Yellow |
-| 🟢 | 🟡 | 🟡 Yellow |
-| 🔴 | any | 🔴 Red |
-| any | 🔴 | 🔴 Red |
+| on_track_pct | Status |
+|---|---|
+| ≥ 95% | 🟢 Green |
+| 85–94% | 🟡 Yellow |
+| < 85% | 🔴 Red |
 
 ---
 
@@ -178,29 +110,58 @@ If historical data unavailable → fall back to linear projection but flag: "⚠
 
 ---
 
-## Step 4 — Read Outlook Emails (last 24h)
+## Step 4 — Read Gmail (last 24h)
 
-Use `outlook_email_search` — filter by action keywords: "please", "cần", "urgent", "by EOD", "deadline", "confirm", "approval", "action required"
+Use Gmail MCP to read **tuyetnhi085@gmail.com**, afterDateTime=yesterday.
+Skip the dashboard PDF email already processed in Step 1.
 
-Group: 🔴 Reply today / 🟡 Read and note / ⬜ FYI
+**Triage rule — only flag as action item if ANY of:**
+- Email sent **directly to tuyetnhi085@gmail.com** (To field, not CC/BCC)
+- Email **@mentions** Ann by name (@Nhi, @nhint6, @Nhi Nìm Tuyết)
+- Ann is the **only or primary recipient** with a clear ask
+
+**Everything else → ⬜ FYI** (group together at the bottom, one line each).
+
+Group action items:
+- 🔴 Reply/act today: direct ask, deadline today, approval request
+- 🟡 Note & plan: direct ask with flexible deadline
 
 ---
 
 ## Step 5 — Check Today's Calendar
 
-Use `outlook_calendar_search` — list all meetings with time, attendees, prep notes needed.
+Use **Google Calendar** via Gmail MCP (tuyetnhi085@gmail.com) — list all events today with time, room, attendees, prep note if needed.
 
 ---
 
 ## Step 6 — Read Microsoft Teams Messages (last 24h)
 
-Use `chat_message_search` — DMs and @mentions. Flag same-day responses needed.
+Use `chat_message_search`.
+
+**Triage rule — only flag as action item if:**
+- **Direct message (DM)** sent specifically to Ann
+- Ann is **@mentioned** in a group/channel message
+
+**Everything else → ⬜ FYI** (group together, one line each).
+
+Group action items:
+- 🔴 Needs same-day response
+- 🟡 Respond within 1–2 days
+
+If Teams connector unavailable → note "⚠️ Teams skipped" and continue.
 
 ---
 
 ## Step 7 — Read Lark/Feishu Messages (last 24h)
 
 Call Lark API with credentials from AgentBase identity.
+
+**Triage rule — only flag as action item if:**
+- **Direct message** to Ann
+- Ann is **@mentioned** in a group
+
+**Everything else → ⬜ FYI** (group together, one line each).
+
 If token missing → note "⚠️ Lark skipped" and continue.
 
 ---
@@ -213,7 +174,7 @@ If token missing → note "⚠️ Lark skipped" and continue.
 **Fallback:** Read `config.json → bau_tasks` if the sheet is unavailable.
 
 ### 8a — Daily tasks (flag every day)
-- Dashboard performance check (atlas.vng.com.vn — already done in Step 2)
+- Dashboard performance check — already done in Step 1 (PDF from Gmail)
 - Noti for tomorrow: must be set before **18:00 today**. Check if today's noti was already sent.
 
 ### 8b — Weekly tasks (flag on Monday)
@@ -319,15 +280,13 @@ TIKTOK SHOP:
   🔲 This week: [baseline tasks due this week]
   ⚠️ Overdue: [any baseline tasks past due]
 
-⚡ AD-HOC TASKS TODAY (from email + Teams + KPI alerts):
+⚡ AD-HOC TASKS (direct messages / @mentions only):
   🔴 Must do today:
-    1. [Task] — Source: [email/Teams/KPI]
-    2. [Task]
+    1. [Task] — Source: [DM/@ email/Teams/Lark]
   🟡 Should do today:
-    3. [Task]
-    4. [Task]
-  📬 Can defer:
-    5. [Task] — defer to [day]
+    2. [Task]
+  📬 FYI (CC'd, group messages not @, newsletters):
+    - [one-liner summary x N items]
 
 🗓️ SUGGESTED SCHEDULE:
   10:15–11:00  [highest priority task]
@@ -343,11 +302,12 @@ Auto-generated: [timestamp] | VPN: ✅/⚠️ | Dashboard: ✅/⚠️
 
 ---
 
-## Step 10 — Send via Outlook
+## Step 10 — Save Brief as File
 
-Send 3-page briefing to: **nhint6@vng.com.vn**
+Save the completed 3-page brief as:
+`morning-brief-[YYYY-MM-DD].md` in the Downloads folder.
 
-If send fails → save as `morning-brief-[YYYY-MM-DD].md` and surface as file card.
+Surface the file as a card so Ann can open it directly.
 
 ---
 
@@ -357,7 +317,7 @@ If re-triggered during the day:
 1. Re-run Steps 4, 6, 7 only (skip dashboards)
 2. Append "⚡ URGENT UPDATE — [HH:MM]" to Page 3 task list
 3. Re-prioritize workplan with new information
-4. Send short update: subject "⚡ Update [HH:MM]: [summary]"
+4. Save updated brief as a new file card
 
 ---
 
@@ -365,12 +325,12 @@ If re-triggered during the day:
 
 | Situation | Behavior |
 |-----------|----------|
-| VPN not active | Skip Step 2, note in all 3 pages |
+| Dashboard PDF not received | Use last known data from config.json, flag ⚠️ |
 | Historical data unavailable | Fall back to linear forecast, flag accuracy warning |
-| Microsoft 365 not connected | Skip Steps 4–6, note in Page 3 |
+| Gmail MCP not connected | Skip Steps 3–4, note in Page 3 |
+| Microsoft 365 not connected | Skip Step 6, note in Page 3 |
 | Lark token missing | Skip Step 7, note in Page 3 |
 | Google Sheets unavailable | Use config.json targets, no historical curve |
-| Outlook send fails | Save .md and surface to user |
 
 ---
 

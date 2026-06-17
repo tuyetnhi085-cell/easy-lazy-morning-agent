@@ -4,70 +4,95 @@
 
 ## What it does
 
-**Easy Lazy Morning** is a personal AI agent that runs every weekday at 10:15 AM and automatically delivers a structured 3-page morning briefing to the marketer's inbox — before the workday begins.
+**Easy Lazy Morning** is a personal AI agent that runs every weekday at 10:15 AM and automatically compiles a structured 3-page morning briefing — before the workday begins.
 
 Every morning it:
-1. Scrapes 4 internal Tableau dashboards (Telco MPU, Global SP KPI, TikTok Shop, Promotion Cost) via browser automation over VPN
-2. Reads Outlook emails, calendar, and Teams messages from the last 24h
-3. Analyzes KPIs using dual-check logic: vs Same Period Last Month (SPLM) + Historical Pacing Curve forecast
-4. Cross-references a live SOP sheet for BAU tasks due today
-5. Composes a 3-page briefing and sends it via Microsoft Outlook
+1. Reads today's dashboard PDF sent by Ann to Gmail (Telco MPU, Global SP KPI, TikTok, Promo Budget)
+2. Analyzes KPIs using Historical Pacing Curve forecast → EOM projection vs target
+3. Reads Gmail emails (last 24h) with smart triage: DM/@mention = action item, rest = FYI
+4. Reads Google Calendar for today's meetings and prep notes
+5. Reads Microsoft Teams messages with the same triage logic
+6. Cross-references a live SOP sheet for BAU tasks due today
+7. Compiles a 3-page brief and saves it as a ready-to-read file
 
 ## Problem it solves
 
-A marketing manager at ZaloPay spends 30–45 minutes each morning manually checking dashboards, emails, and messages before they can plan their day. Easy Lazy Morning compresses this to zero active effort.
+A marketing manager at ZaloPay spends 30–45 minutes each morning manually checking dashboards, emails, and messages before they can plan their day. Easy Lazy Morning compresses this to zero active effort — open the file, start working.
 
 ## Architecture
 
 ```
-Local (VPN on) → Browser scrapes Tableau dashboards
-              → Microsoft 365 MCP reads Outlook/Teams/Calendar
-              → Google Drive MCP reads KPI targets + SOP
-              → LangChain agent analyzes + composes briefing
-              → Sends 3-page email via Outlook
-              → Deployed on GreenNode AgentBase
+Gmail MCP (tuyetnhi085@gmail.com)
+  → Dashboard PDF attachment (sent by Ann each morning)
+  → Emails last 24h (smart triage)
+  → Google Calendar events today
+
+Microsoft 365 MCP
+  → Teams messages last 24h (smart triage)
+
+Google Drive MCP
+  → Live SOP sheet (BAU tasks, KPI targets)
+
+Claude Agent (GreenNode AgentBase)
+  → KPI analysis: Historical Pacing Curve → EOM projection
+  → Triage: flag action only if DM / @mention / direct recipient
+  → Compose 3-page brief
+  → Save as morning-brief-YYYY-MM-DD.md
+
+Scheduled: cron 15 10 * * 1-5 (10:15 AM weekdays)
 ```
 
 ## KPI Analysis Logic
 
-Two independent checks per metric. Final status = worst of the two.
+Single check per metric: Historical Pacing Curve EOM forecast.
 
-| Check | Method | 🟢 | 🟡 | 🔴 |
-|-------|--------|----|----|-----|
-| Check A | vs Same Period Last Month | ≥ 0% | -5% to 0% | < -5% |
-| Check B | Historical Pacing Curve EOM forecast | ≥ 95% on-track | 85–94% | < 85% |
+**Method:** Pull 3 months of daily actuals → calculate expected % of monthly total achieved by day N → project EOM = MTD_actual / expected_pct × 100
 
-**Historical Pacing Curve** (not linear): reads 3 months of daily actuals → calculates expected % of monthly total by day N → projects EOM accordingly.
+| Status | Condition |
+|--------|-----------|
+| 🟢 Green | on_track_pct ≥ 95% |
+| 🟡 Yellow | 85–94% |
+| 🔴 Red | < 85% |
 
-## Briefing Format
+Non-linear deceleration curve:
+- Days 1–10: ramp-up, lower daily numbers
+- Days 11–20: peak performance window
+- Days 21–30: ~35% lower than mid-month average
 
-- **Page 1 — Telco Performance:** MPU MTD, Projected EOM, FPU, Cost/User, sub-category breakdown (Airtime, Data, Digital Code, Postpaid, OutApp), Promo budget
-- **Page 2 — Global & TikTok:** SP payment volume, Telco share, TikTok MPU/FPU/TPV, WoW trend
-- **Page 3 — Consolidated Workplan:** Meetings, BAU tasks due today, ad-hoc tasks from email/Teams, suggested daily schedule
+## Triage Logic
 
-## Dashboards
+| Source | Flag as 🔴/🟡 action | ⬜ FYI |
+|--------|----------------------|--------|
+| Gmail | Direct To: Ann, @mention, sole recipient with ask | CC, BCC, group, newsletter |
+| Teams | DM to Ann, @mention in group | All other channel messages |
+| Lark | DM to Ann, @mention in group | All other messages |
 
-| Dashboard | URL |
-|-----------|-----|
-| Telco MPU Performance | `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/OverallMPUPerformance/OverallMPUbyUserType` |
-| Global SP KPI | `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/SPKPIDashboard/SPKPIDashboard` |
-| TikTok Payment Monitoring | `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/TikTokPaymentMonitoring/TikTokPaymentMonitoring` |
-| Promotion Cost Summary | `https://atlas.vng.com.vn/#/site/ZLPDataServices/views/PromotionSummary/PromotionSummary` |
+## Briefing Format (3 pages)
+
+**Page 1 — Telco Performance**
+MPU MTD → Projected EOM → vs Target (🟢/🟡/🔴) | Sub-categories: Airtime, Data, Digital Code, OutApp, Postpaid | Promo budget: Spend, TPV, %Cost/TPV, CPU
+
+**Page 2 — Global & TikTok**
+Global SP Volume MTD → EOM forecast → Telco share % | TikTok: MPU, daily PU, FPU, TPV, MoM% | Proposed actions for 🔴 metrics
+
+**Page 3 — Consolidated Workplan**
+Meetings today | 🔴 Must-do (BAU due + action emails/DMs) | 🟡 Should-do | ⬜ FYI | Suggested hourly schedule 10:15→EOD
 
 ## Tech Stack
 
-- **GreenNode AgentBase** — cloud deployment platform (VNG)
-- **LangChain** — agent orchestration
-- **Microsoft Graph API** — Outlook email, calendar, Teams
-- **Claude in Chrome** — browser automation for VPN-protected Tableau dashboards
+- **GreenNode AgentBase** — cloud deployment & scheduling (VNG)
+- **Claude Agent SDK** — agent orchestration (via SKILL.md)
+- **Gmail MCP** — dashboard PDF reading, email triage, Google Calendar
+- **Microsoft 365 MCP** — Teams messages
 - **Google Drive MCP** — KPI targets and SOP sheet
 - **Docker** — containerized deployment
 
 ## Setup
 
 ### Prerequisites
-- VPN connected to VNG corporate network (for Tableau dashboards)
-- Microsoft 365 credentials (Outlook/Teams)
+- Gmail MCP connected to `tuyetnhi085@gmail.com`
+- Microsoft 365 MCP connected (Teams only)
+- Ann sends dashboard PDF to `tuyetnhi085@gmail.com` each morning before 10:15 AM
 - GreenNode AgentBase account (`GREENNODE_CLIENT_ID` + `GREENNODE_CLIENT_SECRET`)
 
 ### Environment Variables
@@ -97,7 +122,7 @@ docker run --env-file .env -p 8080:8080 easy-lazy-morning
 
 ## Schedule
 
-Runs automatically at **10:15 AM, Monday–Friday** (VPN connects at 10:00 AM, 15-min buffer).
+Runs automatically at **10:15 AM, Monday–Friday** (15-min buffer after VPN connects at 10:00 AM).
 Cron: `15 10 * * 1-5`
 
 ## Agent Endpoint
@@ -112,7 +137,7 @@ https://endpoint-e90e7faa-d43e-4d4e-802f-3d6296a7135c.agentbase-runtime.aiplatfo
 |------|-------------|
 | `SKILL.md` | Agent skill definition — all 11 steps |
 | `config.json` | KPI thresholds, dashboard URLs, BAU tasks, schedules |
-| `main.py` | LangChain agent server (GreenNode AgentBase format) |
+| `main.py` | Agent server (GreenNode AgentBase format) |
 | `Dockerfile` | Container definition for AgentBase deployment |
 | `requirements.txt` | Python dependencies |
 
